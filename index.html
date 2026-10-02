@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tsushima — Island of Wind</title>
+<meta name="description" content="A real-time 3D ride across the island of Tsushima, built in WebGL: Komoda beach in 1274, golden fields, a maple forest, a standoff at a hilltop shrine and moonrise. Everything is generated in code.">
+<meta name="theme-color" content="#0e0d0c">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Geist:wght@300;400;500&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body class="is-loading">
+
+<canvas id="world" aria-hidden="true"></canvas>
+<div class="fx-vignette" aria-hidden="true"></div>
+<div class="fx-grain" aria-hidden="true"></div>
+<div class="bars" aria-hidden="true"><i></i><i></i></div>
+<div class="dusk" aria-hidden="true"></div>
+
+<!-- ============ INTRO: a katana drawn by scroll ============ -->
+<div class="boot" aria-hidden="true"><span>刀</span></div>
+<section id="intro" aria-label="Tsushima, an island of wind">
+  <p class="intro__big" aria-hidden="true">Tsushima</p>
+  <canvas id="introCanvas" aria-hidden="true"></canvas>
+  <div class="intro__meta">
+    <p class="intro__kicker">対馬 · Island of wind</p>
+    <h1 class="intro__lede">A real-time ride across the island, built in WebGL by Sanketh.</h1>
+  </div>
+  <p class="intro__word" aria-hidden="true"></p>
+  <div class="intro__cue"><span class="hint__mouse"><i></i></span>Scroll to draw</div>
+  <div class="intro__notes" aria-hidden="true"></div>
+  <i class="intro__slash" aria-hidden="true"></i>
+</section>
+
+<!-- ============ HUD ============ -->
+<header class="hud-top">
+  <button class="brand" data-go="0" aria-label="Back to the beach">
+    <span class="brand__seal">対馬</span>
+    <span class="brand__name">Tsushima<small>Island of wind</small></span>
+  </button>
+  <div class="hud-top__right">
+    <button class="toggle" id="bwToggle" aria-pressed="false"><span class="toggle__dot"></span>Black &amp; white</button>
+    <button class="toggle" id="soundToggle" aria-pressed="false"><span class="sound__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="sound__label">Sound off</span></button>
+  </div>
+</header>
+
+<nav class="rail" aria-label="Chapters"></nav>
+<p class="readout" aria-hidden="true"><span id="roTime">16:20</span><span id="roWind">Wind 2.4 m/s</span><span id="roAlt">Alt 4 m</span></p>
+<div class="journey" aria-hidden="true"><span class="journey__fill"></span></div>
+
+<div class="card" aria-live="polite">
+  <p class="card__num"></p>
+  <p class="card__k"></p>
+  <span class="card__stroke"></span>
+  <h2 class="card__name"></h2>
+  <p class="card__sub"></p>
+</div>
+
+<p class="subtitle" aria-live="polite"></p>
+
+<div class="wind" aria-hidden="true">
+  <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30"/><g class="wind__arrow"><path d="M32 8 L38 30 L32 26 L26 30 Z"/></g></svg>
+  <span>風 Wind</span>
+</div>
+
+<div class="hint" aria-hidden="true"><span class="hint__mouse"><i></i></span>Scroll to ride</div>
+
+
+<!-- ending -->
+<section class="end" aria-labelledby="endTitle">
+  <p class="end__k" aria-hidden="true">対馬</p>
+  <h2 id="endTitle" class="end__title">The island rests.</h2>
+</section>
+
+<!-- credits: after the blade is sheathed, the very end of the page -->
+<section class="credits" aria-labelledby="creditsTitle">
+  <h2 id="creditsTitle" class="credits__title">Blade sheathed.</h2>
+  <p class="end__text">A real-time 3D piece by Sanketh. Every tree, blade of grass, building and sound you just passed is generated in code. There are no 3D models, no image files and no audio files.</p>
+  <dl class="stats" id="stats"></dl>
+  <p class="end__stack">Three.js · GLSL · GSAP · Lenis · Web Audio</p>
+  <div class="end__row">
+    <button class="btn btn--solid" data-go="0">Ride again</button>
+    <a class="btn btn--ghost" href="https://github.com/sanketh908">GitHub</a>
+  </div>
+</section>
+
+<div class="intro-track" aria-hidden="true"></div>
+<main class="track" aria-label="Scroll to travel across the island"></main>
+<div class="outro-track" aria-hidden="true"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js" defer></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

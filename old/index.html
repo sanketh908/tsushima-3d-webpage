@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tsushima — Island of Wind</title>
+<meta name="description" content="An interactive fan tribute to Ghost of Tsushima and the island's real history: the Mongol landing of 1274, the way of the samurai, a standoff duel and a haiku you compose yourself.">
+<meta name="theme-color" content="#0e0d0c">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Geist:wght@300;400;500&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="is-loading">
+
+<!-- ============ LOADER ============ -->
+<div id="loader" aria-live="polite">
+  <div class="loader__half loader__half--a"></div>
+  <div class="loader__half loader__half--b"></div>
+  <div class="loader__inner">
+    <svg class="katana" viewBox="0 0 900 60" aria-hidden="true">
+      <defs>
+        <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f4f1ea"/><stop offset=".55" stop-color="#a9a49b"/><stop offset="1" stop-color="#5d5a55"/>
+        </linearGradient>
+        <pattern id="ito" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="22" height="22" fill="#141210"/><rect width="11" height="22" fill="#2a2420"/>
+        </pattern>
+      </defs>
+      <path class="katana__blade" d="M250 30 C 470 26, 690 20, 878 12 L 890 16 C 700 30, 470 37, 250 38 Z" fill="url(#steel)"/>
+      <path class="katana__hamon" d="M262 36 C 330 33 360 37 420 34 S 520 35 580 31 S 700 30 760 26 S 840 21 880 16" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/>
+      <rect class="katana__habaki" x="236" y="27" width="16" height="14" rx="2" fill="#b8924a"/>
+      <ellipse class="katana__tsuba" cx="230" cy="34" rx="7" ry="24" fill="#1b1917" stroke="#b8924a" stroke-width="2"/>
+      <path class="katana__tsuka" d="M20 28 L222 27 L222 41 L20 40 Z" fill="url(#ito)"/>
+      <rect x="12" y="27" width="10" height="14" rx="3" fill="#b8924a"/>
+    </svg>
+    <p class="loader__word" data-scramble>Breathe</p>
+    <p class="loader__count"><span id="count">0</span><span>%</span></p>
+    <div class="loader__enter" hidden>
+      <button class="btn btn--solid" data-enter="sound" data-sfx>Enter with sound</button>
+      <button class="btn btn--ghost" data-enter="silent">Enter in silence</button>
+    </div>
+  </div>
+  <div class="loader__slash"></div>
+</div>
+
+<!-- ============ CHROME ============ -->
+<div class="cursor" aria-hidden="true"><span class="cursor__dot"></span><span class="cursor__ring"></span></div>
+<div class="progress" aria-hidden="true"><span></span></div>
+
+<header class="nav">
+  <a href="#top" class="seal" data-sfx aria-label="Back to top"><span>対馬</span></a>
+  <nav class="nav__links" aria-label="Sections">
+    <a href="#strait" data-sfx>1274</a>
+    <a href="#paths" data-sfx>Two paths</a>
+    <a href="#virtues" data-sfx>Virtues</a>
+    <a href="#duel" data-sfx>Standoff</a>
+    <a href="#haiku" data-sfx>Haiku</a>
+  </nav>
+  <button class="sound" id="soundToggle" aria-pressed="false" data-sfx>
+    <span class="sound__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="sound__label">Sound off</span>
+  </button>
+</header>
+
+<main id="top">
+
+<!-- ============ HERO ============ -->
+<section class="hero" aria-labelledby="heroTitle">
+  <div class="hero__sky" aria-hidden="true">
+    <div class="sun"></div>
+    <svg class="ridge ridge--far" viewBox="0 0 1600 300" preserveAspectRatio="none"><path d="M0 220 L120 170 L210 190 L330 120 L420 160 L520 110 L640 175 L760 130 L880 190 L1000 140 L1120 170 L1240 100 L1360 160 L1480 130 L1600 180 L1600 300 L0 300Z"/></svg>
+    <svg class="ridge ridge--near" viewBox="0 0 1600 300" preserveAspectRatio="none"><path d="M0 250 L160 200 L300 230 L460 180 L600 240 L780 190 L940 235 L1100 200 L1260 240 L1420 205 L1600 235 L1600 300 L0 300Z"/></svg>
+  </div>
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="hero__copy">
+    <p class="kicker"><span class="dot"></span>A fan tribute · 対馬 · 1274</p>
+    <h1 id="heroTitle" class="hero__title"><span class="line">Ghost of</span><span class="line">Tsushima</span></h1>
+    <p class="hero__sub">An island in the strait between Korea and Japan.<br>Move your cursor. The wind follows you.</p>
+  </div>
+  <div class="hero__scroll" aria-hidden="true"><span>Scroll</span><i></i></div>
+</section>
+
+<!-- ============ 1274 ============ -->
+<section class="strait" id="strait" aria-labelledby="straitTitle">
+  <div class="strait__pin">
+    <div class="strait__left">
+      <p class="kicker">Bun'ei invasion</p>
+      <h2 id="straitTitle" class="year" aria-label="1274"><span>1</span><span>2</span><span>7</span><span>4</span></h2>
+      <svg class="sea" viewBox="0 0 600 220" aria-hidden="true">
+        <path class="sea__route" d="M20 170 C 180 150, 320 90, 560 60" fill="none"/>
+        <g class="sea__fleet"></g>
+        <circle cx="560" cy="60" r="5" class="sea__isle"/>
+        <text x="20" y="200">Korea</text><text x="520" y="40">Tsushima</text>
+      </svg>
+    </div>
+    <ol class="strait__lines">
+      <li data-reveal>In the tenth month of 1274, a Yuan–Goryeo fleet of some nine hundred ships sails out of Korea.</li>
+      <li data-reveal>Its first landfall is Komoda beach, on the island of Tsushima.</li>
+      <li data-reveal>The island's deputy governor, Sō Sukekuni, rides out to meet it with about eighty horsemen.</li>
+      <li data-reveal>None of them come back. The fleet moves on to Iki, then to Hakata Bay.</li>
+      <li data-reveal>Nearly seven and a half centuries later, Sucker Punch Productions turned that beach into <em>Ghost of Tsushima</em> (2020).</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ TWO PATHS ============ -->
+<section class="paths" id="paths" aria-labelledby="pathsTitle">
+  <div class="paths__pin">
+    <div class="paths__light">
+      <p class="kicker">Path one</p>
+      <h2 id="pathsTitle" class="display">The Samurai</h2>
+      <p class="paths__text">Face the enemy in the open. Announce your name. Win with honour, or do not win at all.</p>
+      <span class="kanji-bg" aria-hidden="true">侍</span>
+    </div>
+    <div class="paths__dark" aria-label="Path two">
+      <p class="kicker">Path two</p>
+      <h2 class="display">The Ghost</h2>
+      <p class="paths__text">Smoke, silence, a blade from behind. Win, whatever it costs the one who wins.</p>
+      <span class="kanji-bg" aria-hidden="true">冥</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIRTUES ============ -->
+<section class="virtues" id="virtues" aria-labelledby="virtuesTitle">
+  <header class="sec-head">
+    <p class="kicker">The code</p>
+    <h2 id="virtuesTitle" class="display" data-split>Seven virtues of bushidō</h2>
+    <p class="sec-head__note">As Nitobe Inazō set them down in <em>Bushido: The Soul of Japan</em> (1900). Hover a seal.</p>
+  </header>
+  <ul class="virtues__grid">
+    <li class="virtue" data-sfx><span class="virtue__k">義</span><span class="virtue__r">Gi</span><span class="virtue__e">Rectitude</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">勇</span><span class="virtue__r">Yū</span><span class="virtue__e">Courage</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">仁</span><span class="virtue__r">Jin</span><span class="virtue__e">Benevolence</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">礼</span><span class="virtue__r">Rei</span><span class="virtue__e">Respect</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">誠</span><span class="virtue__r">Makoto</span><span class="virtue__e">Honesty</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">名誉</span><span class="virtue__r">Meiyo</span><span class="virtue__e">Honour</span></li>
+    <li class="virtue" data-sfx><span class="virtue__k">忠義</span><span class="virtue__r">Chūgi</span><span class="virtue__e">Loyalty</span></li>
+  </ul>
+</section>
+
+<!-- ============ DUEL ============ -->
+<section class="duel" id="duel" aria-labelledby="duelTitle">
+  <header class="sec-head sec-head--dark">
+    <p class="kicker">Standoff</p>
+    <h2 id="duelTitle" class="display" data-split>Wait for the blade</h2>
+    <p class="sec-head__note">Hold still. Strike the instant the sign appears: click, tap or press Space. Strike early and you lose.</p>
+  </header>
+  <div class="arena" id="arena" tabindex="0" role="button" aria-describedby="duelState">
+    <svg class="ronin ronin--you" viewBox="0 0 120 220" aria-hidden="true">
+      <path d="M58 20 q14 0 16 14 q1 10 -6 16 l10 8 q14 8 16 30 l4 46 q1 8 -6 8 l-8 0 l-2 60 l-10 0 l-4 -50 l-6 50 l-10 0 l-4 -60 l-10 0 q-6 0 -5 -8 l6 -46 q3 -22 16 -30 l8 -8 q-7 -6 -6 -16 q2 -14 16 -14z"/>
+      <path d="M28 10 L92 10 L74 22 L46 22 Z" class="ronin__hat"/>
+      <path class="ronin__blade" d="M92 110 L150 36" />
+    </svg>
+    <svg class="ronin ronin--foe" viewBox="0 0 120 220" aria-hidden="true">
+      <path d="M58 20 q14 0 16 14 q1 10 -6 16 l10 8 q14 8 16 30 l4 46 q1 8 -6 8 l-8 0 l-2 60 l-10 0 l-4 -50 l-6 50 l-10 0 l-4 -60 l-10 0 q-6 0 -5 -8 l6 -46 q3 -22 16 -30 l8 -8 q-7 -6 -6 -16 q2 -14 16 -14z"/>
+      <path d="M40 4 L80 4 L86 18 L34 18 Z" class="ronin__hat"/>
+      <path class="ronin__blade" d="M92 110 L150 36" />
+    </svg>
+    <div class="arena__sign" aria-hidden="true">斬</div>
+    <div class="arena__flash" aria-hidden="true"></div>
+    <div class="arena__hud">
+      <p id="duelState" class="arena__state" aria-live="assertive">Click to begin</p>
+      <p class="arena__stats"><span>Last <b id="duelLast">—</b></span><span>Best <b id="duelBest">—</b></span><span>Wins <b id="duelWins">0</b></span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HAIKU ============ -->
+<section class="haiku" id="haiku" aria-labelledby="haikuTitle">
+  <header class="sec-head">
+    <p class="kicker">Rest by the water</p>
+    <h2 id="haikuTitle" class="display" data-split>Compose a haiku</h2>
+    <p class="sec-head__note">Five, seven, five. Choose one line from each row.</p>
+  </header>
+  <div class="haiku__wrap">
+    <div class="haiku__picker" id="haikuPicker"></div>
+    <figure class="haiku__card">
+      <blockquote id="haikuOut"><span></span><span></span><span></span></blockquote>
+      <figcaption>— you, on Tsushima</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ MOON ============ -->
+<section class="moon" aria-labelledby="moonTitle">
+  <div class="moon__frame">
+    <canvas id="tree" aria-hidden="true"></canvas>
+    <div class="moon__katana" aria-hidden="true"></div>
+  </div>
+  <div class="moon__copy">
+    <h2 id="moonTitle" class="display" data-split>Follow the wind.</h2>
+    <p>The island is quiet now. The maples still turn red every autumn.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <p class="foot__big" aria-hidden="true">対馬</p>
+  <div class="foot__row">
+    <p>An unofficial fan tribute. <em>Ghost of Tsushima</em> is © Sony Interactive Entertainment, developed by Sucker Punch Productions. Not affiliated or endorsed.</p>
+    <p>Designed &amp; built by <a href="https://github.com/sanketh908" data-sfx>Sanketh</a>. All art on this page is drawn in code.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>

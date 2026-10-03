@@ -679,7 +679,7 @@ export function createWorld(canvas, { coarse }) {
     return BR.yb + .35 + 1.5 * Math.cos(s / BR.half * Math.PI / 2);
   };
   // [x, z, yaw, size, burning]
-  const VILLAGE = [[30, 5, -.25, 1, true], [38, 9, .1, .9, false], [46, 4, -.4, 1.1, true], [54, 10, .25, .85, false], [36, -2, -.1, .95, false], [49, -4, .35, 1, true], [58, 3, -.2, .9, false]];
+  const VILLAGE = [[30, 5, -.25, 1, true], [38, 9, .1, .9, true], [46, 4, -.4, 1.1, true], [54, 10, .25, .85, false], [36, -2, -.1, .95, true], [49, -4, .35, 1, true], [58, 3, -.2, .9, false]];
   const SPOTS = { pagoda: [-47, -64], hokora: [-11, -41], minka: [26, -83], wheel: [21.5, 0], jizo: [[6.2, -14], [7.1, -14.8], [8, -15.7], [-7.4, -104], [-8.2, -103.2]] };
   SPOTS.wheel[1] = RIVER_Z(SPOTS.wheel[0]) + 4.1;
   // the bamboo grove: one soft-edged stand on the left of the road; maples keep a clearing around it
@@ -999,6 +999,7 @@ export function createWorld(canvas, { coarse }) {
     const addPad = (c, pr, a) => {
       pads.push([c[0], c[1] + pr * .1, c[2], a, pr, pr * .9]);
       for (const s of [-1, 1]) {
+        if (c[2] > -20 && s > 0) continue;                                          // coastal pines: one side lobe is plenty
         const la = a + s * (1.2 + R() * .5), lr = pr * (.55 + R() * .15);
         pads.push([c[0] + Math.cos(la) * pr * .62, c[1] - pr * .04, c[2] + Math.sin(la) * pr * .62, R() * 6.28, lr, lr * .9]);
       }
@@ -1084,6 +1085,17 @@ export function createWorld(canvas, { coarse }) {
       .add(new THREE.ExtrudeGeometry(new THREE.Shape(V2([[-2.6, .5], [-2, 0], [2, 0], [2.8, .7], [2.9, .9], [-2.7, .8]])), { depth: 1.3, bevelEnabled: false }), M.wood, [0, 0, -.65])
       .add(new THREE.BoxGeometry(5, .08, 1.1), M.darkWood, [0, .7, 0]).build();
     stamp(scene, boat, [[33, H(33, 17), 17, .3], [44, H(44, 18), 18, -.2], [52, H(52, 16.5), 16.5, .5]].map(([x, y, z, r]) => [x, y + .1, z, r]));
+    // the invaders' landing craft, run up at the waterline; some have caught fire
+    const LANDING = [[-17, 23, 1.2, true], [-5, 25, -1.4, false], [9, 24, 1.1, false], [21, 22, -1.3, true], [64, 20, 1.5, false]];
+    stamp(scene, boat, LANDING.map(([x, z, r]) => [x, Math.max(H(x, z), -.25) + .1, z, r, 1.45]));
+    for (const [x, z, , burning] of LANDING) if (burning) {
+      const y = Math.max(H(x, z), -.25) + .9;
+      smokes.push([x, y + 2, z]);
+      for (let f = 0; f < 2; f++) flames.push(x + (f - .5) * 2, y + R() * .4, z + (R() - .5), R() * 10);
+    }
+    for (const [x, z] of [[14, 15.5], [-9, 17.5], [27, 13.5]]) {                      // debris fires on the sand
+      flames.push(x, H(x, z) + .9, z, R() * 10);
+    }
     const net = kit();
     for (const [x, z] of [[38, 11], [48, 12]]) {
       const y = H(x, z);
@@ -1102,7 +1114,7 @@ export function createWorld(canvas, { coarse }) {
     fire.frustumCulled = false; fire.renderOrder = 3; fire.name = "fire";
     scene.add(fire);
 
-    const per = 10, sg = new THREE.InstancedBufferGeometry();
+    const per = 7, sg = new THREE.InstancedBufferGeometry();
     sg.index = base.index; sg.attributes.position = base.attributes.position;
     const arr = [];
     smokes.forEach(([x, y, z]) => { for (let k = 0; k < per; k++) arr.push(x, y, z, k / per + R() * .03); });
@@ -1113,6 +1125,123 @@ export function createWorld(canvas, { coarse }) {
     const smoke = new THREE.Mesh(sg, mat);
     smoke.frustumCulled = false; smoke.renderOrder = 2; smoke.name = "smoke";
     scene.add(smoke);
+  }
+
+  /* ---- the battle on Komoda beach: samurai against the landing force ---- */
+  const battle = new THREE.Group(); battle.name = "battle";
+  {
+    const R = rng(1281), vc = lam(0xffffff, { vertexColors: true });
+    const paint = (geo, hex) => { const g = geo.index ? geo.toNonIndexed() : geo, c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) c.toArray(a, i * 3); g.setAttribute("color", new THREE.BufferAttribute(a, 3)); if (g.attributes.uv) g.deleteAttribute("uv"); return g; };
+    const at = (g, p, r = [0, 0, 0], s = [1, 1, 1]) => g.applyMatrix4(m4.compose(v3.set(...p), q4.setFromEuler(e3.set(...r)), s3.set(...s)));
+    const body = parts => mergeGeometries(parts.map(([geo, hex, p, r, s]) => paint(at(geo, p, r, s), hex)));
+    // samurai: hakama legs, laced skirt, cuirass, shoulder boards, kabuto with flared neck guard and crest
+    const samurai = lace => body([
+      [new THREE.CylinderGeometry(.09, .12, .62, 6), "#1f1a17", [.13, .31, .05], [0, 0, -.12]], [new THREE.CylinderGeometry(.09, .12, .62, 6), "#1f1a17", [-.13, .31, -.08], [0, 0, .12]],
+      [new THREE.BoxGeometry(.12, .06, .24), "#8a7752", [.15, .03, .1]], [new THREE.BoxGeometry(.12, .06, .24), "#8a7752", [-.16, .03, -.04]],
+      [new THREE.CylinderGeometry(.24, .36, .36, 8, 1, true), lace, [0, .8, 0]],
+      [new THREE.CylinderGeometry(.24, .23, .5, 8), lace, [0, 1.2, 0], [0, 0, 0], [1, 1, .8]],
+      [new THREE.BoxGeometry(.26, .05, .2), "#c9a24c", [0, 1.42, .12]],
+      [new THREE.BoxGeometry(.13, .26, .26), lace, [.3, 1.3, 0], [0, 0, -.25]], [new THREE.BoxGeometry(.13, .26, .26), lace, [-.3, 1.3, 0], [0, 0, .25]],
+      [new THREE.SphereGeometry(.1, 8, 6), "#6b4a38", [0, 1.58, .02]],
+      [new THREE.SphereGeometry(.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), "#151312", [0, 1.62, 0]],
+      [new THREE.CylinderGeometry(.14, .25, .14, 10, 1, true), "#151312", [0, 1.55, -.02]],
+      [new THREE.BoxGeometry(.03, .16, .02), "#c9a24c", [.05, 1.78, .12], [-.2, 0, -.4]], [new THREE.BoxGeometry(.03, .16, .02), "#c9a24c", [-.05, 1.78, .12], [-.2, 0, .4]],
+    ]);
+    // Yuan–Goryeo soldier: boots, long padded coat, lamellar vest, round shield, conical helmet with a red tassel
+    const invader = coat => body([
+      [new THREE.CylinderGeometry(.08, .1, .55, 6), "#2a2018", [.12, .28, .04], [0, 0, -.1]], [new THREE.CylinderGeometry(.08, .1, .55, 6), "#2a2018", [-.12, .28, -.06], [0, 0, .1]],
+      [new THREE.CylinderGeometry(.22, .38, .62, 8, 1, true), coat, [0, .78, 0]],
+      [new THREE.CylinderGeometry(.22, .23, .5, 8), "#4a4038", [0, 1.22, 0], [0, 0, 0], [1, 1, .8]],
+      [new THREE.CylinderGeometry(.26, .26, .05, 8), "#2a2018", [0, 1.0, 0]],
+      [new THREE.CylinderGeometry(.3, .3, .05, 12), "#5a3a22", [.32, 1.12, .12], [0, 0, Math.PI / 2 - .2]],          // round shield on the left arm
+      [new THREE.SphereGeometry(.035, 6, 4), "#8a8070", [.35, 1.12, .12]],
+      [new THREE.SphereGeometry(.1, 8, 6), "#7a5a44", [0, 1.57, .02]],
+      [new THREE.ConeGeometry(.14, .26, 8), "#595550", [0, 1.75, 0]], [new THREE.CylinderGeometry(.17, .17, .03, 10), "#595550", [0, 1.63, 0]],
+      [new THREE.ConeGeometry(.04, .14, 5), "#a8261b", [0, 1.95, 0], [Math.PI, 0, 0]],
+    ]);
+    // weapon arms: both arms and the blade/spear, pivoting at the shoulders (local origin)
+    const katanaArms = body([
+      [new THREE.CylinderGeometry(.05, .045, .55, 5), "#3a3532", [.1, -.22, .14], [.9, 0, .3]], [new THREE.CylinderGeometry(.05, .045, .55, 5), "#3a3532", [-.1, -.22, .14], [.9, 0, -.3]],
+      [new THREE.BoxGeometry(.035, .32, .03), "#1b1714", [0, -.36, .52], [1.6, 0, 0]],
+      [new THREE.BoxGeometry(.03, .95, .008), "#d8d6d0", [0, -.36, 1.15], [1.6, 0, 0]],
+    ]);
+    const spearArms = body([
+      [new THREE.CylinderGeometry(.05, .045, .55, 5), "#4a4038", [-.1, -.22, .14], [.9, 0, -.3]],
+      [new THREE.CylinderGeometry(.018, .018, 2.4, 5), "#4a3422", [-.08, -.36, .6], [1.6, 0, 0]],
+      [new THREE.ConeGeometry(.035, .22, 5), "#c8c6c0", [-.08, -.39, 1.9], [Math.PI / 2 + .03, 0, 0]],
+    ]);
+    const daoArms = body([
+      [new THREE.CylinderGeometry(.05, .045, .55, 5), "#4a4038", [-.1, -.22, .14], [.9, 0, -.3]],
+      [new THREE.BoxGeometry(.04, .78, .01), "#cfcdc6", [-.1, -.36, .9], [1.5, 0, 0]],
+    ]);
+    // pick spots on the sand, in pairs facing each other
+    const BOATS = [[-17, 23], [-5, 25], [9, 24], [21, 22], [64, 20], [33, 17], [44, 18], [52, 16.5]];
+    const spots = [], ok = (x, z) => { const h = H(x, z); return h > .45 && h < 3 && pathDist(x, z) > 9 && !blocked(x, z) && BOATS.every(([a, b]) => (a - x) ** 2 + (b - z) ** 2 > 4.5 * 4.5) && spots.every(([a, b]) => (a - x) ** 2 + (b - z) ** 2 > 3.2 * 3.2); };   // dry sand, clear of the boats
+    for (let t = 0; spots.length < (coarse ? 12 : 22) && t < 4000; t++) {
+      const x = -30 + R() * 100, z = 9 + R() * 14;
+      if (ok(x, z)) spots.push([x, z, R() * 6.28]);
+    }
+    // a fighter = body + arms in one geometry; aArm marks the arm vertices the shader swings at the shoulder
+    const fighter = (bodyG, armsG) => {
+      const flag = (g, v) => { g.setAttribute("aArm", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(v), 1)); return g; };
+      return mergeGeometries([flag(bodyG.clone(), 0), flag(armsG.clone(), 1)]);
+    };
+    const KINDS = [fighter(samurai("#a8261b"), katanaArms), fighter(samurai("#2e4a86"), katanaArms), fighter(invader("#6b4a2a"), spearArms), fighter(invader("#4a3a2a"), daoArms)];
+    const lists = KINDS.map(() => []);
+    spots.forEach(([x, z, a], i) => {
+      const dx = Math.cos(a) * .8, dz = Math.sin(a) * .8, phase = R() * 6.28, rate = 1.1 + R() * .5;
+      lists[i % 2].push([x - dx, z - dz, Math.atan2(dx, dz), phase, rate, 0]);                    // samurai
+      lists[2 + (i % 3 ? 0 : 1)].push([x + dx, z + dz, Math.atan2(-dx, -dz), phase, rate, 1, i % 3 ? 1 : 0]);   // his opponent shares the rhythm; kind 2 carries a spear
+    });
+    // the exchange runs in the vertex shader: the attacker winds up and cuts, the defender braces; turns alternate
+    const fightM = lam(0xffffff, { vertexColors: true });
+    fightM.onBeforeCompile = sh => {
+      sh.uniforms.uTime = S.uTime;
+      sh.vertexShader = sh.vertexShader
+        .replace("#include <common>", `#include <common>
+          attribute float aArm; attribute vec4 aFight; uniform float uTime;
+          mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1., 0., 0., 0., c, s, 0., -s, c); }`)
+        .replace("#include <beginnormal_vertex>", `
+          float ph = uTime * aFight.y + aFight.x, s = mod(ph, PI) / PI;
+          bool attacking = (mod(floor(ph / PI), 2.) < .5) == (aFight.z < .5);
+          float cut = s < .62 ? 0. : pow((s - .62) / .38, .6), sw = sin(cut * PI);
+          bool spear = aFight.w > .5;
+          float lunge = attacking ? (spear ? .42 : .28) * sw : -.14 * sw, lean = attacking ? .1 * cut : -.06 * cut;
+          // blades: raise overhead, cut down through guard; spears: level, drive forward; defenders hold a forward guard
+          float arm = spear ? (attacking ? mix(-.3 * smoothstep(0., .62, s), .08, cut) : -.22 + .06 * sin(ph * 2.))
+                            : (attacking ? mix(-1.65 * smoothstep(0., .62, s), .45, cut) : -.35 + .12 * sin(ph * 2.));
+          mat3 rArm = rotX(aArm > .5 ? arm : 0.), rLean = rotX(lean);
+          vec3 objectNormal = rLean * rArm * normal;
+          #ifdef USE_TANGENT
+            vec3 objectTangent = vec3(tangent.xyz);
+          #endif`)
+        .replace("#include <begin_vertex>", `
+          vec3 transformed = rLean * (rArm * position + vec3(0., aArm * 1.42, 0.));
+          transformed.z += lunge;`);
+    };
+    KINDS.forEach((geo, k) => {
+      const list = lists[k]; if (!list.length) return;
+      const g = geo.clone(), im = new THREE.InstancedMesh(g, fightM, list.length);
+      g.setAttribute("aFight", new THREE.InstancedBufferAttribute(new Float32Array(list.flatMap(f => [f[3], f[4], f[5], f[6] || 0])), 4));
+      list.forEach(([x, z, face], i) => place(im, i, x, H(x, z) - .02, z, face));
+      im.computeBoundingSphere(); im.boundingSphere.radius += 2;               // room for lunges and raised blades
+      battle.add(im);
+    });
+    // everything that does not move is baked into one mesh: the fallen, arrows in the sand, banners
+    const still = [], put = (geo, x, y, z, ry, rx = 0, rz = 0) => still.push(geo.clone().applyMatrix4(m4.compose(v3.set(x, y, z), q4.setFromEuler(e3.set(rx, ry, rz)), s3.set(1, 1, 1))));
+    for (let t = 0, n = 0; n < (coarse ? 6 : 12) && t < 2000; t++) {
+      const x = -30 + R() * 100, z = 8 + R() * 15;
+      if (!ok(x, z)) continue;
+      spots.push([x, z]); put(n % 2 ? samurai("#a8261b") : invader("#6b4a2a"), x, H(x, z) + .14, z, R() * 6.28, Math.PI / 2, (R() - .5) * .4); n++;
+    }
+    const arrowG = body([[new THREE.CylinderGeometry(.008, .008, .8, 4), "#3a2c1e", [0, .4, 0]], [new THREE.BoxGeometry(.05, .1, .005), "#d8d0c0", [0, .76, 0]]]);
+    for (let i = 0; i < (coarse ? 60 : 140); i++) { let x, z; do { x = -32 + R() * 104; z = 7 + R() * 17; } while (H(x, z) < .1 || blocked(x, z)); put(arrowG, x, H(x, z) - .15, z, R() * 6.28, (R() - .5) * .9, (R() - .5) * .9); }
+    const flagG = (hex, dot) => body([[new THREE.CylinderGeometry(.025, .025, 4.2, 5), "#2a2018", [0, 2.1, 0]], [new THREE.BoxGeometry(.7, 1.9, .02), hex, [.37, 3, 0]], [new THREE.CylinderGeometry(.18, .18, .025, 12), dot, [.37, 3.4, .02], [Math.PI / 2, 0, 0]]]);
+    for (const [geo, n, side] of [[flagG("#ece6d8", "#a8261b"), 5, -1], [flagG("#2a1612", "#c9a24c"), 6, 1]]) {
+      for (let i = 0; i < n; i++) { let x, z; do { x = -28 + R() * 96; z = side < 0 ? 8 + R() * 5 : 17 + R() * 6; } while (H(x, z) < .1 || blocked(x, z) || pathDist(x, z) < 9); put(geo, x, H(x, z) - .1, z, R() * 6.28); }
+    }
+    battle.add(new THREE.Mesh(mergeGeometries(still), vc));
+    scene.add(battle);
   }
 
   /* ---- the 1274 fleet: junks with battened sails ---- */
@@ -1745,7 +1874,8 @@ export function createWorld(canvas, { coarse }) {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    camera.fov = w / h < .8 ? 68 : 52;
+    // tall phones: widen the view until about 48° fits across, so the standoff and the village stay in frame
+    camera.fov = w / h < .8 ? Math.min(90, Math.max(68, 2 * Math.atan(Math.tan(24 * Math.PI / 180) / (w / h)) * 180 / Math.PI)) : 52;
     camera.updateProjectionMatrix();
   }
   resize();
@@ -1782,6 +1912,7 @@ export function createWorld(canvas, { coarse }) {
       c.grass.geometry.instanceCount = Math.ceil(c.grass.geometry.userData.full * lod);
     }
     wheel.userData.spin.rotation.z -= dt * .55;
+    battle.visible = camera.position.z > -30;                                   // the fighting is on the beach only
     you.visible = foe.visible = camera.position.distanceToSquared(you.position) < 90 * 90;   // ~20 draws each, sub-pixel from afar
     if (!draw) return { windAngle: wa - Math.atan2(tan.z, tan.x), gust: S.uGust.value, alt: camera.position.y };          // hidden behind the intro
     renderer.render(scene, camera);

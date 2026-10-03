@@ -130,14 +130,26 @@ function nanakoNormal() {
   return t;
 }
 
-// urushi: deep black with a faint tame-nuri warmth, and an orange-peel top coat
+// saya: honoki wood under translucent red-brown lacquer (tame-nuri): flowing grain with cathedral arches,
+// dark pores, the grain slightly raised under a glossy top coat. u runs along the scabbard, v around it.
 function lacquerMaps() {
-  const nz = noise2(31);
-  const color = pixelTex(512, 64, (u, v) => { const n = nz(u * 18, v * 3), w = sstep(.55, .85, n); return [10 + w * 22, 8 + w * 6, 7 + w * 3]; });
-  const peel = normalTex(256, 256, (u, v) => nz(u * 60, v * 60, 3), 1.2);
-  color.wrapS = THREE.RepeatWrapping; color.repeat.set(2, 1);
-  peel.wrapS = peel.wrapT = THREE.RepeatWrapping; peel.repeat.set(6, 2);
-  return { color, peel };
+  const nz = noise2(31), W = 1024, H = 128;
+  const grain = (u, v) => {
+    const warp = nz(u * 6, v * 2) * 2.2 + nz(u * 30, v * 5, 2) * .35;                          // the grain wanders along the length
+    const arch = Math.abs(Math.sin(u * 7.5 + nz(v * 3, u, 2) * 2)) * .9;                        // cathedral figures where the cut crosses rings
+    const line = Math.sin((v * 7 + warp + arch) * Math.PI * 2);
+    return Math.pow(line * .5 + .5, 3);                                                          // thin dark latewood lines, broad light earlywood
+  };
+  const pore = (u, v) => nz(u * 900, v * 90, 1) > .86 ? 1 : 0;
+  const color = pixelTex(W, H, (u, v) => {
+    const g = grain(u, v), deep = .55 + .45 * nz(u * 3, v * 4 + 7);                              // the lacquer pools darker in places
+    return [(38 - 24 * g - 10 * pore(u, v)) * deep + 5, (17 - 11 * g - 4 * pore(u, v)) * deep + 3, (10 - 6 * g - 3 * pore(u, v)) * deep + 3];
+  });
+  const rough = pixelTex(256, 64, (u, v) => { const r = 26 + 40 * grain(u * 4, v); return [r, r, r]; }, false);
+  const bump = normalTex(512, 128, (u, v) => grain(u * 2, v) * .5 + nz(u * 200, v * 40, 2) * .25, 3);   // raised grain + orange peel
+  bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.set(.5, 1);
+  rough.wrapS = rough.wrapT = THREE.RepeatWrapping; rough.repeat.set(.25, 1);
+  return { color, rough, peel: bump };
 }
 
 // one lathe-like part around the x axis
@@ -196,14 +208,17 @@ function buildKatana() {
     iron: std({ color: 0xffffff, map: ironM.color, roughnessMap: ironM.rough, normalMap: ironM.normal, normalScale: new THREE.Vector2(.35, .35), metalness: .7, roughness: 1 }),
     shakudo: std({ color: 0x1e2229, metalness: .92, roughness: .3, normalMap: nanako, normalScale: new THREE.Vector2(.5, .5) }),
     horn: std({ color: 0x120d0a, roughness: .2 }),
-    cord: std({ color: 0xffffff, roughness: .8 }),
+    cord: std({ color: 0xffffff, roughness: .7, side: THREE.DoubleSide, bumpScale: 1.5 }),
     ito: std({ vertexColors: true, roughness: .55 }),
-    // urushi: one glossy layer reads the same as a clear coat on solid black, at half the reflection cost
-    saya: std({ color: 0xffffff, map: urushi.color, roughness: .06, normalMap: urushi.peel, normalScale: new THREE.Vector2(.1, .1) }),
+    // lacquered wood: one glossy layer reads the same as a clear coat, at half the reflection cost
+    saya: std({ color: 0xffffff, map: urushi.color, roughness: 1, roughnessMap: urushi.rough, normalMap: urushi.peel, normalScale: new THREE.Vector2(.12, .12) }),
   };
   // braided sageo: diagonal herringbone in deep indigo
-  M.cord.map = pixelTex(64, 16, (u, v) => { const k = Math.sin((u * 8 + (v < .5 ? v : 1 - v) * 2) * 6.283) * .5 + .5; return [28 + 30 * k, 26 + 26 * k, 48 + 40 * k]; });
-  M.cord.map.wrapS = THREE.RepeatWrapping; M.cord.map.repeat.set(220, 1);
+  // braided sageo: rows of chevrons (herringbone), deep indigo silk, edges rolled darker
+  const braid = (u, v) => { const k = Math.abs(((u * 6 + Math.abs(v - .5) * 2.4) % 1) - .5) * 2, edge = 1 - Math.pow(Math.abs(v - .5) * 2, 4); return k * edge; };
+  M.cord.map = pixelTex(64, 32, (u, v) => { const k = braid(u, v); return [14 + 26 * k, 16 + 26 * k, 34 + 46 * k]; });
+  M.cord.bumpMap = pixelTex(64, 32, (u, v) => { const k = braid(u, v) * 255; return [k, k, k]; }, false);
+  for (const t of [M.cord.map, M.cord.bumpMap]) t.wrapS = t.wrapT = THREE.RepeatWrapping;
 
   /* ---- sword: blade, habaki, seppa, tsuba, tsuka ---- */
   const sword = new THREE.Group(), blade = new THREE.Mesh(bladeGeometry(), M.blade);
@@ -258,14 +273,45 @@ function buildKatana() {
     { const p = body.attributes.position; for (let i = 0; i < p.count; i++) { const s = p.getX(i) / SL; p.setZ(i, p.getZ(i) * .62 * mix(1, .85, s)); } body.computeVertexNormals(); }
     saya.add(new THREE.Mesh(body, M.saya));
     const koi = ovalTube(.022, .0195, .64, 48); koi.translate(.011, 0, 0); saya.add(new THREE.Mesh(koi, M.horn));
+    const band = (x, w, r, m) => { const g = ovalTube(w, r, .62 * mix(1, .85, x / SL), 48, false); g.translate(x, arcY(x), 0); saya.add(new THREE.Mesh(g, m)); };
+    band(.0235, .0016, .0192, M.gold);                                           // gilt line behind the mouth
+    band(SL - .05, .012, .0184, M.horn); band(SL - .0565, .0012, .0187, M.gold);  // horn band before the end cap
     const koj = new THREE.SphereGeometry(.0188, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2); koj.scale(1.4, 1, .55); koj.rotateZ(-Math.PI / 2); koj.translate(SL, arcY(SL), 0); saya.add(new THREE.Mesh(koj, M.shakudo));
     const kjr = new THREE.TorusGeometry(.0186, .001, 6, 40); kjr.scale(1, 1, .55); kjr.rotateY(Math.PI / 2); kjr.translate(SL, arcY(SL), 0); saya.add(new THREE.Mesh(kjr, M.gold));
-    const kuri = new THREE.TorusGeometry(.0055, .0026, 10, 20); kuri.scale(1.3, 1, 1); kuri.translate(.11, arcY(.11) - .0205, 0); saya.add(new THREE.Mesh(kuri, M.horn));
-    // sageo cord, wound around the scabbard below the kurikata
-    const cord = [];
-    for (let i = 0; i <= 160; i++) { const a = i / 160 * Math.PI * 8, x = .125 + i / 160 * .034; cord.push(new THREE.Vector3(x, arcY(x) + Math.cos(a) * .0188, Math.sin(a) * .0118)); }
-    const cg = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cord), 320, .0016, 6);
-    saya.add(new THREE.Mesh(cg, M.cord));
+    // kurikata: a horn knob on the scabbard's side with a gilt-lined hole for the cord
+    const KX = .1, KY = arcY(.1) - .0215;
+    { const sh = new THREE.Shape(), hw = .009, hh = .0062, r = .004;
+      sh.moveTo(-hw + r, -hh); sh.lineTo(hw - r, -hh); sh.quadraticCurveTo(hw, -hh, hw, -hh + r); sh.lineTo(hw, hh); sh.lineTo(-hw, hh); sh.lineTo(-hw, -hh + r); sh.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+      const hole = new THREE.Path(); hole.absarc(0, -.001, .0033, 0, Math.PI * 2, true); sh.holes.push(hole);
+      const kg = new THREE.ExtrudeGeometry(sh, { depth: .007, bevelEnabled: true, bevelThickness: .0008, bevelSize: .0008, bevelSegments: 2, curveSegments: 16 });
+      kg.translate(0, 0, -.0035); kg.translate(KX, KY, 0); saya.add(new THREE.Mesh(kg, M.horn));
+      const ring = new THREE.TorusGeometry(.0033, .0007, 8, 24); ring.translate(KX, KY - .001, 0); saya.add(new THREE.Mesh(ring, M.gold)); }
+    // sageo: a flat braided silk cord, wound in two crossing spirals (a diamond lattice) and tailing off below
+    const ribbon = (pts, width, up) => {                                       // a flat strip along pts, lying on the surface
+      const pos = [], uv = [], idx = [], T = new THREE.Vector3(), N = new THREE.Vector3(), Wd = new THREE.Vector3();
+      let len = 0;
+      pts.forEach((p, i) => {
+        T.subVectors(pts[Math.min(i + 1, pts.length - 1)], pts[Math.max(i - 1, 0)]).normalize();
+        Wd.crossVectors(T, up(p, N)).normalize().multiplyScalar(width / 2);
+        if (i) len += p.distanceTo(pts[i - 1]);
+        pos.push(p.x - Wd.x, p.y - Wd.y, p.z - Wd.z, p.x + Wd.x, p.y + Wd.y, p.z + Wd.z);
+        uv.push(len / .009, 0, len / .009, 1);
+        if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+      g.setIndex(idx); g.computeVertexNormals(); return g;
+    };
+    const radial = (p, N) => N.set(0, p.y - arcY(p.x), p.z * 2.6).normalize();       // outward from the scabbard
+    for (const dir of [1, -1]) {
+      const pts = [];
+      for (let i = 0; i <= 220; i++) { const t = i / 220, a = dir * t * Math.PI * 5 + (dir < 0 ? Math.PI : 0), x = .112 + t * .05; pts.push(new THREE.Vector3(x, arcY(x) + Math.cos(a) * (.0191 + dir * .0003), Math.sin(a) * (.0121 + dir * .0003))); }
+      saya.add(new THREE.Mesh(ribbon(pts, .0042, radial), M.cord));
+    }
+    for (const [dz, len] of [[.004, .075], [-.004, .06]]) {                 // the two loose ends, hanging from the knob
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(KX, KY - .003, dz), new THREE.Vector3(KX + .012, KY - .02, dz * 1.5), new THREE.Vector3(KX + .02, KY - len * .6, dz * 2), new THREE.Vector3(KX + .03, KY - len, dz * 2.2)]);
+      saya.add(new THREE.Mesh(ribbon(curve.getPoints(40), .0042, () => new THREE.Vector3(0, 0, 1)), M.cord));
+    }
   }
   return { sword, saya };
 }
@@ -279,10 +325,11 @@ function studioEnvironment(renderer) {
     m.position.set(...p); m.lookAt(0, 0, 0); env.add(m);
   };
   panel(7, .55, 0xffffff, 7, [0, 3.4, 1.2]);            // overhead strip: the long highlight down the blade
-  panel(2.4, 3, 0xfff0dc, 3.2, [-3.2, 1.2, 2.4]);       // warm key softbox
+  panel(2.4, 3, 0xfff0dc, 4.5, [-3.2, 1.2, 2.4]);
+  panel(3, 2, 0xfff4e8, 2.2, [1.5, .2, 3.4]);           // broad front softbox       // warm key softbox
   panel(.45, 4.5, 0xdde7ff, 5, [3.3, .6, -1.4]);        // cool rim strip
-  panel(6, .45, 0xff4a2a, 2.4, [0, -2.6, -2.2]);        // red kicker, low behind
-  panel(9, 9, 0x2a201a, .35, [0, -4.5, .5]);           // dim warm floor bounce
+  panel(6, .9, 0xc0603a, .8, [0, -2.6, -2.2]);          // warm kicker, low behind: a soft edge glow, not a hard red line
+  panel(9, 9, 0x4a3a2e, .7, [0, -4.5, .5]);           // dim warm floor bounce
   const pm = new THREE.PMREMGenerator(renderer), tex = pm.fromScene(env, .015).texture;
   pm.dispose();
   return tex;
@@ -290,21 +337,22 @@ function studioEnvironment(renderer) {
 
 export function createIntro(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, matchMedia("(pointer: coarse)").matches ? 1.5 : 2));   // phones: 1.5× is sharp enough and half the pixels of 3×
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.55;
   renderer.setClearColor(0x000000, 0);
 
   const scene = new THREE.Scene();
   scene.environment = studioEnvironment(renderer);
-  scene.environmentIntensity = .9;
+  scene.environmentIntensity = 1.45;
 
   const camera = new THREE.PerspectiveCamera(28, 1, .01, 20);
-  const key = new THREE.DirectionalLight(0xfff1e0, 2.2); key.position.set(-1, 2, 3);
-  const rim = new THREE.DirectionalLight(0xff3a22, 2.4); rim.position.set(1, -1.5, -2.5);   // blood-red rim from behind
+  const key = new THREE.DirectionalLight(0xfff1e0, 3.6); key.position.set(-1, 2, 3);
+  const fill = new THREE.DirectionalLight(0xfff6ec, 1.6); fill.position.set(.6, .4, 3);      // soft front fill so every fitting reads
+  const rim = new THREE.DirectionalLight(0xff6a3a, 1.3); rim.position.set(1, -1.5, -2.5);   // blood-red rim from behind
   const gleam = new THREE.PointLight(0xffffff, 0, 1.2, 1.5);                               // travels along the blade as it is drawn
-  scene.add(key, rim, gleam);
+  scene.add(key, fill, rim, gleam);
 
   // rig (moves the hand during the slash) > katana (hero framing) > sword / scabbard pivots on the arc centre
   const { sword, saya } = buildKatana();
@@ -356,7 +404,7 @@ export function createIntro(canvas) {
     [sword, -.011, .046, "Tsuba", "hammered iron guard"],
     [sword, -.16, .018, "Tsuka-ito", "silk braid over rayskin"],
     [saya, .142, arcY(.142) + .021, "Sageo", "braided silk cord"],
-    [saya, .52, arcY(.52) + .019, "Saya", "black urushi lacquer"],
+    [saya, .52, arcY(.52) + .019, "Saya", "lacquered honoki wood"],
     [sword, .3, arcY(.3) + .005, "Hamon", "the temper line"],
   ];
   const anchors = NOTES.map(([obj, x, y, name, text]) => ({ obj, p: new THREE.Vector3(x, y, 0), name, text, x: 0, y: 0 }));
@@ -367,7 +415,7 @@ export function createIntro(canvas) {
   // rev: the stroke runs backwards (closing), so the trail follows behind on the other side
   function update(t, c, time, dt, rev = false) {
     ptr.sx += (ptr.x - ptr.sx) * Math.min(1, dt * 3); ptr.sy += (ptr.y - ptr.sy) * Math.min(1, dt * 3);
-    const near = w < 700;
+    const near = w < 700, tilt = h > w * 1.25 ? .62 : 0;                 // portrait: lay the sword on the diagonal to use the height
     // A  0–.12   macro close-up, breathing           B  .12–.45  pull back to a side view
     // C  .42–.7  the blade slides out along its arc   D  .7–.84   scabbard drops, blade rises over the shoulder
     const pull = sstep(.12, .45, t), draw = sstep(.42, .7, t), k = sstep(.7, .84, t);
@@ -375,7 +423,7 @@ export function createIntro(canvas) {
     katana.rotation.set(
       mix(mix(.45, .02, pull) + idle + ptr.sy * .08, 0, k),
       mix(mix(-.75, 0, pull) + ptr.sx * .12 + idle, 0, k),
-      mix(mix(.62, .1, pull) + idle * .5, 0, k));
+      mix(mix(.62, .1 + tilt, pull) + idle * .5, 0, k));
     // drawing: the sword turns left about the arc centre, the scabbard right; together they part by a blade length
     const phiS = -(draw * .42 + k * .1) / R_ARC;
     sp.rotation.z = phiS; yp.rotation.z = draw * .38 / R_ARC;
@@ -387,8 +435,8 @@ export function createIntro(canvas) {
     const ang = rigPose(c, k, rig.position);
     rig.rotation.z = ang;
     // camera: very close at first, then far enough to frame the whole blade
-    const fit = Math.max(2.05, .62 / (Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
-    const dist = mix(near ? .5 : .36, fit, pull);
+    const fit = Math.max(1.65, (tilt ? .46 : .55) / (Math.tan(camera.fov * Math.PI / 360) * camera.aspect));   // close enough to read the sword
+    const dist = mix(near ? .62 : .36, fit, pull);
     camera.position.set(mix(.08, 0, pull), mix(.03, .02, pull) * (1 - k), dist);
     lookAt.set(mix(mix(.1, .05, pull) - draw * .2, 0, k), 0, 0);
     camera.lookAt(lookAt);

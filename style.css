@@ -81,7 +81,7 @@ body.is-cine .bars i { transform: scaleY(1); }
 body:not(.is-loading) .boot { opacity: 0; visibility: hidden; }
 #intro {
   position: fixed; inset: 0; z-index: 15; overflow: hidden;
-  background: radial-gradient(ellipse 80% 70% at 62% 42%, #1d1816 0%, #0d0c0b 62%, #070606 100%);
+  background: radial-gradient(ellipse 85% 75% at 60% 42%, #4a3c33 0%, #2a221d 48%, #120f0d 100%);   /* a lit warm backdrop, not a dark room */
   clip-path: var(--clip, none);
 }
 #intro.is-done { visibility: hidden; }
@@ -114,6 +114,8 @@ body:not(.is-loading) .boot { opacity: 0; visibility: hidden; }
 .note--up::before { bottom: 4px; } .note--down::before { top: 4px; transform: scaleY(-1); }
 .note span { position: absolute; left: 10px; white-space: nowrap; font: 400 11px/1.35 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--mist); }
 .note--up span { bottom: 34px; } .note--down span { top: 34px; }
+.note--left span { left: auto; right: 10px; text-align: right; }
+.note small { font: inherit; }
 .note b { display: block; font: 500 17px/1.2 var(--serif); letter-spacing: 0; text-transform: none; color: var(--paper); }
 .intro__slash {
   position: absolute; left: -10%; top: 50%; width: 120%; height: 2px;
@@ -272,17 +274,11 @@ body.is-riding.at-start .hint { opacity: 1; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
-/* ride readout and journey bar */
-.readout {
-  position: fixed; left: 50%; top: max(26px, env(safe-area-inset-top)); translate: -50% 0; z-index: 20; margin: 0;
-  display: flex; gap: 1.4rem; font: 400 11px var(--mono); letter-spacing: .14em; text-transform: uppercase;
-  color: var(--mist); text-shadow: var(--shadow); opacity: 0; transition: opacity 1s var(--ease); font-variant-numeric: tabular-nums;
-}
+/* journey bar */
 .journey { position: fixed; left: 0; right: 0; bottom: 0; height: 2px; z-index: 21; background: rgba(239,232,218,.12); opacity: 0; transition: opacity 1s var(--ease); }
 .journey__fill { position: absolute; inset: 0; background: var(--maple); transform-origin: left; transform: scaleX(0); }
 .journey i { position: absolute; top: -3px; width: 1px; height: 8px; background: var(--mist); }
-body.is-riding .readout, body.is-riding .journey { opacity: 1; }
-@media (max-width: 700px) { .readout { display: none; } }
+body.is-riding .journey { opacity: 1; }
 
 /* outro: the blade goes back into its scabbard, then the credits */
 .outro-track { height: 260vh; }
@@ -294,3 +290,4 @@ body.is-riding .readout, body.is-riding .journey { opacity: 1; }
 .credits.is-on { visibility: visible; pointer-events: auto; }
 .credits__title { margin: 0; font: 700 clamp(1.6rem, 3vw, 2.4rem)/1.1 var(--serif); }
 .dusk { position: fixed; inset: 0; z-index: 14; background: #050404; opacity: 0; pointer-events: none; }
+@media (max-width: 700px) { .note small { display: none; } .note span { font-size: 9px; } .note b { font-size: 14px; } .note::before { height: 34px; } .note--up span { bottom: 24px; } .note--down span { top: 24px; } }

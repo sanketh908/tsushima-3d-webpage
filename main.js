@@ -229,12 +229,9 @@ function setSubtitle(i) {
 }
 
 const arrow = $(".wind__arrow");
-// readout: time of day along the ride, wind from the shader's gust, altitude of the camera
-const ro = { time: $("#roTime"), wind: $("#roWind"), alt: $("#roAlt") }, journey = $(".journey__fill");
+// journey bar along the bottom, with a tick per chapter
+const journey = $(".journey__fill");
 CHAPTERS.slice(1).forEach(c => { const t = document.createElement("i"); t.style.left = c.at * 100 + "%"; $(".journey").appendChild(t); });
-const CLOCK = [[0, 16 * 60 + 20], [.18, 16 * 60 + 50], [.5, 17 * 60 + 35], [.72, 18 * 60 + 5], [.945, 19 * 60 + 40], [1, 20 * 60 + 10]];
-const clockAt = p => { let i = 0; while (i < CLOCK.length - 2 && p > CLOCK[i + 1][0]) i++; const [a, ma] = CLOCK[i], [b, mb] = CLOCK[i + 1]; const mins = Math.round(ma + (mb - ma) * clamp((p - a) / (b - a), 0, 1)); return `${String(mins / 60 | 0).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`; };
-let roAt = 0;
 const endEl = $(".end");
 
 /* =====================================================================
@@ -292,12 +289,6 @@ function frame(time, dtMs) {
 
   arrow.style.transform = `rotate(${(info.windAngle * 180 / Math.PI).toFixed(1)}deg)`;
   journey.style.transform = `scaleX(${p.toFixed(4)})`;
-  if (time - roAt > .25) {                                                // text updates 4× a second are plenty
-    roAt = time;
-    ro.time.textContent = clockAt(p);
-    ro.wind.textContent = `Wind ${(1.5 + info.gust * 5.5).toFixed(1)} m/s`;
-    ro.alt.textContent = `Alt ${Math.max(0, Math.round(info.alt))} m`;
-  }
   sfx.ambience(p, Math.abs(info.windAngle));
   document.body.classList.toggle("at-start", p < .012);
 
@@ -330,7 +321,7 @@ const scramble = (el, to, dur = 650) => {
 const notes = intro.anchors.map((a, i) => {
   const el = document.createElement("div");
   el.className = "note note--" + ["up", "down", "down", "up", "up"][i];          // keep neighbours apart
-  el.innerHTML = `<i></i><span><b>${a.name}</b>${a.text}</span>`;
+  el.innerHTML = `<i></i><span><b>${a.name}</b><small>${a.text}</small></span>`;
   $(".intro__notes").appendChild(el);
   return el;
 });
@@ -355,9 +346,10 @@ function playIntro(t, time, dt) {
   const c = cutS.c;
   intro.update(t, c, time, dt);
   intro.anchors.forEach((a, i) => {
-    const [s, e] = NOTE_WIN[i], o = sstep(s, s + .03, t) * (1 - sstep(e - .03, e, t));
+    const [s, e] = NOTE_WIN[i], onScreen = a.x > 24 && a.x < innerWidth - 24 && a.y > 60 && a.y < innerHeight - 60;
+    const o = onScreen ? sstep(s, s + .03, t) * (1 - sstep(e - .03, e, t)) : 0;
     notes[i].style.opacity = o;
-    if (o > 0) notes[i].style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px)`;
+    if (o > 0) { notes[i].style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px)`; notes[i].classList.toggle("note--left", a.x > innerWidth - 230); }
   });
   const fade = 1 - sstep(.08, .3, t);
   I.big.style.opacity = fade; I.big.style.transform = `translateY(${(1 - fade) * 12}vh)`;
